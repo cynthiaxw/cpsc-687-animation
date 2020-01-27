@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.5.1) # Not sure what the minimum is required
-project (givr_example CXX C)
+project (a1-roller-coaster CXX C)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # Use modern C++
