@@ -21,6 +21,7 @@ public:
   glm::vec3 &operator[](int idx);
   glm::vec3 front() const;
   glm::vec3 back() const;
+  glm::vec3 arcLengthParameterization(float s) const;
 
   // intended interface of curve: scalar parameter
   glm::vec3 operator()(float t) const;

@@ -10,6 +10,7 @@
 #include "curve.h"
 #include "curvefileio.h"
 
+
 using namespace glm;
 using namespace givr::camera;
 using namespace givr::geometry;
@@ -40,8 +41,9 @@ int main(void) {
 
 	// ... or from file
 	 //auto curve = geometry::loadCurveFromFile("curve.txt");
-	auto curve = geometry::loadCurveFrom_OBJ_File("curve.obj");
+	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/curve.obj");
 	curve = geometry::cubicSubdivideCurve(curve.points(), 2);
+	// TODO: curve method returns point vector of the b-spline curve
 
 	// package geometry
 	auto polyline = PolyLine<givr::PrimitiveType::LINE_LOOP>();

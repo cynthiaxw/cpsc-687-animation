@@ -5,107 +5,146 @@
 
 namespace geometry {
 
-using namespace glm;
+	//---------------------------Macros and global variables---------------------------//
+// These are related to the b-spline
+	const float DELTA_T = 0.01f;
+	const float DELTA_S = 0.005f;
+	const float DELTA_U = 0.001f;
+	const int B_SPLINE_ORDER = 3;
 
-vec3 midpoint(vec3 const &a, vec3 const &b) { return lerp(a, b, 0.5f); }
+	//---------------------------Macros and global variables---------------------------//
 
-Curve::Curve() {}
+	using namespace glm;
 
-Curve::Curve(Points points) : m_points(points) {}
+	// REMOVE
+	vec3 midpoint(vec3 const &a, vec3 const &b) { return lerp(a, b, 0.5f); }
 
-vec3 Curve::operator[](int idx) const { return m_points[idx]; }
+	Curve::Curve() {}
 
-vec3 &Curve::operator[](int idx) { return m_points[idx]; }
+	Curve::Curve(Points points) : m_points(points) {}
 
-vec3 Curve::front() const { return m_points.front(); }
+	vec3 Curve::operator[](int idx) const { return m_points[idx]; }
 
-vec3 Curve::back() const { return m_points.back(); }
+	vec3 &Curve::operator[](int idx) { return m_points[idx]; }
 
-vec3 Curve::operator()(float t) const {
-  // TODO fill will better function
-  if (pointCount() == 0)
-    return vec3(0.f);
+	vec3 Curve::front() const { return m_points.front(); }
 
-  if (pointCount() == 1)
-    return front();
+	vec3 Curve::back() const { return m_points.back(); }
 
-  if (t >= 1.f)
-    return front();
+	vec3 Curve::operator()(float t) const {	// C(u)
+	  // TODO fill will better function
+		if (pointCount() == 0)
+			return vec3(0.f);
 
-  // For now just find closest point
-  auto index = t * pointCount();
-  return m_points[index];
-}
+		if (pointCount() == 1)
+			return front();
 
-size_t Curve::pointCount() const { return m_points.size(); }
+		if (t >= 1.f)
+			return front();
 
-vec3 const *Curve::data() const { return m_points.data(); }
+		// For now just find closest point
+		auto index = t * pointCount();
+		return m_points[index];
+	}
 
-std::vector<vec3> const &Curve::points() const { return m_points; }
+	vec3 Curve::arcLengthParameterization(float s) const {	// B(s)
 
-// Free functions
-float length(Curve const &curve) {
-  float accum_length = 0.f;
-  int numLineSegments = curve.pointCount() - 1;
+	}
 
-  for (int i = 0; i < numLineSegments; ++i) {
-    accum_length += distance(curve[i], curve[i + 1]);
-  }
+	size_t Curve::pointCount() const { return m_points.size(); }
 
-  // the wrap around
-  accum_length += distance(curve.front(), curve.back());
+	vec3 const *Curve::data() const { return m_points.data(); }
 
-  return accum_length;
-}
+	std::vector<vec3> const &Curve::points() const { return m_points; }
 
-Curve cubicSubdivideCurve(Curve const &curve, int numberOfSubdivisionSteps) {
-  Points points = curve.points();
+	// Free functions
+	float length(Curve const &curve) {
+		float accum_length = 0.f;
+		int numLineSegments = curve.pointCount() - 1;
 
-  for (int iter = 0; iter < numberOfSubdivisionSteps; ++iter) {
-    // step 1: subdivide
-    points = midpointSubdivide(points);
-    // step 2: repeated averageing (2x)
-    points = repeatedAveraging(points, 2);
-  }
-  return {points};
-}
+		for (int i = 0; i < numLineSegments; ++i) {
+			accum_length += distance(curve[i], curve[i + 1]);
+		}
 
-Points midpointSubdivide(Points const &points) {
-  Points tmp;
-  tmp.reserve(points.size() * 2);
-  int numLineSegments = points.size() - 1;
+		// the wrap around
+		accum_length += distance(curve.front(), curve.back());
 
-  for (int i = 0; i < numLineSegments; ++i) {
-    vec3 mid = lerp(points[i], points[i + 1], 0.5f);
-    tmp.push_back(points[i]);
-    tmp.push_back(mid);
-  }
+		return accum_length;
+	}
 
-  vec3 mid = midpoint(points.back(), points.front());
-  tmp.push_back(points.back());
-  tmp.push_back(mid);
+	int getDelta(std::vector<float> *U, float u, int k, int m) {	// get the index of knot
+		for (int i = k - 1; i < m + k - 1; i++) {
+			if (u >= U->at(i) && u < U->at(i + 1))return i;
+		}
+		return m + k - 2;
+	}
 
-  return tmp;
-}
+	vec3 BSplinePosition(Points *control_points, float u) {	// C(u)
 
-Points repeatedAveragingStep(Points points) {
-  int numLineSegments = points.size() - 1;
-  auto front = points.front(); // saved for wrap around calculation
+	}
 
-  for (int i = 0; i < numLineSegments; ++i) {
-    points[i] = midpoint(points[i], points[i + 1]);
-  }
-  points.back() = midpoint(points.back(), front);
+	Curve BSplineCurve(Curve const &curve, int order = 3) {
+		Points points = curve.points();
+		const float u_inc = 0.001f;		// unit increment of the parameter u
+		const int order = 3;			// order of the b-spline curve
 
-  return points;
-}
 
-Points repeatedAveraging(Points points, int numberOfAveragingSteps) {
-  for (int avgItr = 0; avgItr < numberOfAveragingSteps; ++avgItr) {
-    points = repeatedAveragingStep(points);
-  }
+		return { points };
+	}
 
-  return points;
-}
+
+	// REMOVE
+	Curve cubicSubdivideCurve(Curve const &curve, int numberOfSubdivisionSteps) {
+		Points points = curve.points();
+
+		for (int iter = 0; iter < numberOfSubdivisionSteps; ++iter) {
+			// step 1: subdivide
+			points = midpointSubdivide(points);
+			// step 2: repeated averageing (2x)
+			points = repeatedAveraging(points, 2);
+		}
+		return { points };
+	}
+
+	// REMOVE
+	Points midpointSubdivide(Points const &points) {
+		Points tmp;
+		tmp.reserve(points.size() * 2);
+		int numLineSegments = points.size() - 1;
+
+		for (int i = 0; i < numLineSegments; ++i) {
+			vec3 mid = lerp(points[i], points[i + 1], 0.5f);
+			tmp.push_back(points[i]);
+			tmp.push_back(mid);
+		}
+
+		vec3 mid = midpoint(points.back(), points.front());
+		tmp.push_back(points.back());
+		tmp.push_back(mid);
+
+		return tmp;
+	}
+
+	// REMOVE
+	Points repeatedAveragingStep(Points points) {
+		int numLineSegments = points.size() - 1;
+		auto front = points.front(); // saved for wrap around calculation
+
+		for (int i = 0; i < numLineSegments; ++i) {
+			points[i] = midpoint(points[i], points[i + 1]);
+		}
+		points.back() = midpoint(points.back(), front);
+
+		return points;
+	}
+
+	// REMOVE
+	Points repeatedAveraging(Points points, int numberOfAveragingSteps) {
+		for (int avgItr = 0; avgItr < numberOfAveragingSteps; ++avgItr) {
+			points = repeatedAveragingStep(points);
+		}
+
+		return points;
+	}
 
 } // namespace geometry

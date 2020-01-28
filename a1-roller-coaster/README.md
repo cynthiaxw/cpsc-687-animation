@@ -1,7 +1,7 @@
 Documentation
 -------------
 
-https://lakin.ca/givr/
+
 
 Compilation
 -----------
@@ -18,3 +18,12 @@ Compilation
 ## How to Run
 
     build/simple
+
+
+References
+----------
+GIVR API: https://lakin.ca/givr/.
+Boilerplate code: from tutorial resources (via D2L).
+B-Spline curve construction code: partially from my previous assignments of CPSC589 (Modeling for Computer Graphics).
+Math /physics: from lecture and tutorial resources (via D2L).
+Compilation instructions: https://github.com/giv-lab/givr/tree/v0.0.11. 
