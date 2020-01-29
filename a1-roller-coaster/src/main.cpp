@@ -80,7 +80,7 @@ int main(void) {
 		view.projection.updateAspectRatio(window.width(), window.height());
 		// default
 		draw(renderableLine, view);
-		draw(renderableLine2, view);
+		//draw(renderableLine2, view);
 
 		// or apply model matrix
 		// givr::mat4f matrix = scale(givr::mat4f{1.f}, givr::vec3f{10.f});

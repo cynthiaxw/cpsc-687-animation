@@ -9,9 +9,6 @@ namespace geometry {
 
 	using Points = std::vector<glm::vec3>;
 
-	// helper function, put in another header file?
-	glm::vec3 midpoint(glm::vec3 const &a, glm::vec3 const &b);
-
 	class Curve {
 	public:
 		Curve();
@@ -21,11 +18,12 @@ namespace geometry {
 		glm::vec3 &operator[](int idx);
 		glm::vec3 front() const;
 		glm::vec3 back() const;
-		glm::vec3 arcLengthParameterization(float s) const;
 		int getDelta(float u) const;
-		Points BSplineCurve() const;
-
-		// intended interface of curve: scalar parameter
+		Points BSplineCurve();
+		void arcLengthParameterization();
+		float bisectionRefinementLUT(float ul, float uh, float ds, float ds_cur, glm::vec3 p_cur);
+		
+		// C(u)
 		glm::vec3 operator()(float t) const;
 
 		size_t pointCount() const;
@@ -35,16 +33,9 @@ namespace geometry {
 	private:
 		Points m_points;
 		std::vector<float> U;
+		std::vector<float> UP;
+		std::vector<float> LUT;
+		float L;
 	};
-
-	// Free functions
-	float length(Curve const &curve);
-
-	Points midpointSubdivide(Points const &points);
-	Points repeatedAveragingStep(Points points);
-	Points repeatedAveraging(Points points, int numberOfAveragingSteps);
-
-	Points repeatedAveraging(Curve const &curve, int numberOfAveragingSteps);
-	Curve cubicSubdivideCurve(Curve const &curve, int numberOfSubdivisionSteps);
 
 } // namespace geometry
