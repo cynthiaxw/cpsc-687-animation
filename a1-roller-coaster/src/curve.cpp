@@ -6,11 +6,11 @@
 namespace geometry {
 
 	//---------------------------Macros and global variables---------------------------//
-// These are related to the b-spline
+	// These are related to the b-spline
 	const float DELTA_T = 0.01f;
 	const float DELTA_S = 0.005f;
-	const float DELTA_U = 0.001f;
-	const int B_SPLINE_ORDER = 3;
+	const float DELTA_U = 0.001f; // unit increment of the parameter u
+	const int B_SPLINE_ORDER = 3; // order of the b-spline curve
 
 	//---------------------------Macros and global variables---------------------------//
 
@@ -21,7 +21,31 @@ namespace geometry {
 
 	Curve::Curve() {}
 
-	Curve::Curve(Points points) : m_points(points) {}
+	Curve::Curve(Points points) : m_points(points) {
+		
+		// concatenate the heading and trailing 3 points
+		m_points.insert(m_points.begin(), points.end() - B_SPLINE_ORDER+1, points.end());
+		m_points.insert(m_points.end(), points.begin(), points.begin() + B_SPLINE_ORDER-1);
+		int m = m_points.size() - 1;
+		// The b-spline curve should be interpolate the first and the last points
+		float step = 1.f / (m+B_SPLINE_ORDER);
+		for (int i = 0; i < m + B_SPLINE_ORDER + 1; i++) {
+			U.push_back(step*i);
+		}
+
+		//float step = 1.f / (float)(m - 3 * B_SPLINE_ORDER + 3);
+		//for (int i = 0; i < 2*(B_SPLINE_ORDER-1)+1; i++) {
+		//	U.push_back(0);
+		//}
+
+		//for (int i = 1; i <= m-3*B_SPLINE_ORDER+3; i++) {
+		//	U.push_back(step*i);
+		//}
+
+		//for (int i = 0; i < 2*(B_SPLINE_ORDER-1)+1; i++) {
+		//	U.push_back(1);
+		//}
+	}
 
 	vec3 Curve::operator[](int idx) const { return m_points[idx]; }
 
@@ -31,33 +55,74 @@ namespace geometry {
 
 	vec3 Curve::back() const { return m_points.back(); }
 
-	vec3 Curve::operator()(float t) const {	// C(u)
-	  // TODO fill will better function
-		if (pointCount() == 0)
-			return vec3(0.f);
-
-		if (pointCount() == 1)
-			return front();
-
-		if (t >= 1.f)
-			return front();
-
-		// For now just find closest point
-		auto index = t * pointCount();
-		return m_points[index];
-	}
-
-	vec3 Curve::arcLengthParameterization(float s) const {	// B(s)
-
-	}
-
 	size_t Curve::pointCount() const { return m_points.size(); }
 
 	vec3 const *Curve::data() const { return m_points.data(); }
 
 	std::vector<vec3> const &Curve::points() const { return m_points; }
 
-	// Free functions
+	vec3 Curve::operator()(float u) const {	// C(u)
+
+		// TODO: if u exceeds [0,1]
+
+		int d = getDelta(u);
+		std::vector<vec3> C;
+		for (int i = B_SPLINE_ORDER-1; i >= 0; i--) {
+			C.push_back(m_points[d + i]);
+		}
+
+		//for (int r = B_SPLINE_ORDER; r >= 2; r--) {
+		//	int i = d+ B_SPLINE_ORDER - 1;
+		//	for (int s = 0; s <= r - 2; s++) {
+		//		float omega = (u - U[i]) / (U[i + r - 1] - U[i]);
+		//		C.at(s) = C.at(s)*omega + (1.f - omega)*C.at(s + 1);
+		//		i--;
+		//	}
+		//}
+
+		//for (int i = 0; i <B_SPLINE_ORDER; i++) {
+		//	C.push_back(m_points[d - i]);
+		//}
+
+		for (int r = B_SPLINE_ORDER; r >= 2; r--) {
+			int i = d + B_SPLINE_ORDER - 1;
+			for (int s = 0; s <= r - 2; s++) {
+				float omega = (u - U[i]) / (U[i + r - 1] - U[i]);
+				C.at(s) = C.at(s)*omega + (1.f - omega)*C.at(s + 1);
+				i--;
+			}
+		}
+		return C.at(0);
+	}
+
+	vec3 Curve::arcLengthParameterization(float s) const {	// B(s)
+		return vec3(0, 0, 0);
+	}
+
+	int Curve::getDelta(float u) const {	// get the index of knot
+		//int m = m_points.size() - 1;
+		/*for (int i = B_SPLINE_ORDER - 1; i < m + B_SPLINE_ORDER - 1; i++) {
+			if (u >= U[i] && u < U[i + 1])return i;
+		}
+		return m + B_SPLINE_ORDER - 2;*/
+		for (int i = 0; i < U.size()-1; i++) {
+			if (u >= U[i] && u < U[i + 1])return i;
+		}
+		return U.size() - 1;
+	}
+
+	// Compute the 3rd-order b-spline curve from the control points 
+	Points Curve::BSplineCurve() const {
+		Points points;
+		for (float u = 0.f; u <= 1; u += DELTA_U) {
+			vec3 E = (*this)(u);
+			points.push_back(E);
+		}
+		return points;
+	}
+
+
+	// REMOVE
 	float length(Curve const &curve) {
 		float accum_length = 0.f;
 		int numLineSegments = curve.pointCount() - 1;
@@ -71,27 +136,6 @@ namespace geometry {
 
 		return accum_length;
 	}
-
-	int getDelta(std::vector<float> *U, float u, int k, int m) {	// get the index of knot
-		for (int i = k - 1; i < m + k - 1; i++) {
-			if (u >= U->at(i) && u < U->at(i + 1))return i;
-		}
-		return m + k - 2;
-	}
-
-	vec3 BSplinePosition(Points *control_points, float u) {	// C(u)
-
-	}
-
-	Curve BSplineCurve(Curve const &curve, int order = 3) {
-		Points points = curve.points();
-		const float u_inc = 0.001f;		// unit increment of the parameter u
-		const int order = 3;			// order of the b-spline curve
-
-
-		return { points };
-	}
-
 
 	// REMOVE
 	Curve cubicSubdivideCurve(Curve const &curve, int numberOfSubdivisionSteps) {

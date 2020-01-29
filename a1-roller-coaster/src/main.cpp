@@ -42,12 +42,20 @@ int main(void) {
 	// ... or from file
 	 //auto curve = geometry::loadCurveFromFile("curve.txt");
 	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/curve.obj");
-	curve = geometry::cubicSubdivideCurve(curve.points(), 2);
-	// TODO: curve method returns point vector of the b-spline curve
+	//REMOVE
+	auto polyline2 = PolyLine<givr::PrimitiveType::LINE_LOOP>();
+	for (auto const p : curve.points()) {
+		polyline2.push_back(Point(p));
+	}
+	auto lineStyle2 = GL_Line(Colour(1.0, 0.0, 0.0));
+	auto renderableLine2 = givr::createRenderable(polyline2, lineStyle2);
+
+	//curve = geometry::cubicSubdivideCurve(curve.points(), 2);
+	auto b_spline_points = curve.BSplineCurve();
 
 	// package geometry
-	auto polyline = PolyLine<givr::PrimitiveType::LINE_LOOP>();
-	for (auto const &p : curve.points()) {
+	auto polyline = PolyLine<givr::PrimitiveType::LINES>();
+	for (auto const p : b_spline_points) {
 		polyline.push_back(Point(p));
 	}
 
@@ -72,6 +80,7 @@ int main(void) {
 		view.projection.updateAspectRatio(window.width(), window.height());
 		// default
 		draw(renderableLine, view);
+		draw(renderableLine2, view);
 
 		// or apply model matrix
 		// givr::mat4f matrix = scale(givr::mat4f{1.f}, givr::vec3f{10.f});
