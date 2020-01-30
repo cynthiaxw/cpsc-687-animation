@@ -11,7 +11,8 @@ namespace geometry {
 	const float DELTA_T = 0.01f;
 	const float DELTA_U = 0.001f; // unit increment of the parameter u
 	const int B_SPLINE_ORDER = 3; // order of the b-spline curve
-	const int N;				  // Arc length paramaterization step
+	const int N = 1000;				  // Arc length paramaterization step
+	const float DELTA_S = 0.001f;	
 
 	//---------------------------Macros and global variables---------------------------//
 
@@ -97,14 +98,19 @@ namespace geometry {
 		}
 
 		// Generate the lookup table for arc-length parameterization
-
+		arcLengthParameterization();
 		return points;
 	}
 
 	//---------------------------Arc length---------------------------//
+	vec3 Curve::B(float s){
+		int ind = floor(s/DELTA_S);
+		return (*this)(LUT[ind]);
+	}
+
 	void Curve::arcLengthParameterization() {
-		int i = 0;
-		float ds = L / N;
+		// float ds = L / N;
+		float ds = DELTA_S;
 		float ds_cur = 0;
 		float uh = 0;
 		while (uh <= 1) {
@@ -136,6 +142,7 @@ namespace geometry {
 				uh = um;
 			}
 		}
+		return (uh+ul)/2.f;
 	}
 	//---------------------------Arc length---------------------------//
 

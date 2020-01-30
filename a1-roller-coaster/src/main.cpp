@@ -41,7 +41,7 @@ int main(void) {
 
 	// ... or from file
 	 //auto curve = geometry::loadCurveFromFile("curve.txt");
-	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/curve.obj");
+	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/myCurve1.obj");
 	//REMOVE
 	auto polyline2 = PolyLine<givr::PrimitiveType::LINE_LOOP>();
 	for (auto const p : curve.points()) {
@@ -86,7 +86,8 @@ int main(void) {
 		// givr::mat4f matrix = scale(givr::mat4f{1.f}, givr::vec3f{10.f});
 		// draw(renderableLine, view, matrix);
 
-		auto matrix_bead = translate(givr::mat4f{ 1.f }, curve(t_bead));
+		// auto matrix_bead = translate(givr::mat4f{ 1.f }, curve(t_bead));
+		auto matrix_bead = translate(givr::mat4f{ 1.f }, curve.B(t_bead));
 		matrix_bead = scale(matrix_bead, givr::vec3f{ 0.1f });
 
 		addInstance(spheres, matrix_bead);

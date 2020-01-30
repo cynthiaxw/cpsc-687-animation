@@ -18,6 +18,7 @@ namespace geometry {
 		glm::vec3 &operator[](int idx);
 		glm::vec3 front() const;
 		glm::vec3 back() const;
+		glm::vec3 B(float s);	// arc-len parameterization
 		int getDelta(float u) const;
 		Points BSplineCurve();
 		void arcLengthParameterization();
