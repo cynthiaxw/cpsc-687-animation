@@ -1,5 +1,6 @@
 #include "curve.h"
 #include <math.h>
+#include <iostream>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/compatibility.hpp>
@@ -9,7 +10,7 @@ namespace geometry {
 	//---------------------------Macros and global variables---------------------------//
 	// These are related to the b-spline
 	const float DELTA_T = 0.01f;
-	const float DELTA_U = 0.001f; // unit increment of the parameter u
+	const float DELTA_U = 0.0001f; // unit increment of the parameter u
 	const int B_SPLINE_ORDER = 3; // order of the b-spline curve
 	const int N = 1000;				  // Arc length paramaterization step
 	const float DELTA_S = 0.001f;	
@@ -96,15 +97,16 @@ namespace geometry {
 			L += distance(pre, E);
 			pre = E;
 		}
-
 		// Generate the lookup table for arc-length parameterization
 		arcLengthParameterization();
 		return points;
 	}
 
 	//---------------------------Arc length---------------------------//
+	float Curve::getL() const {return L;}
+	
 	vec3 Curve::B(float s){
-		int ind = floor(s/DELTA_S);
+		int ind = floor(s/L * LUT.size());
 		return (*this)(LUT[ind]);
 	}
 

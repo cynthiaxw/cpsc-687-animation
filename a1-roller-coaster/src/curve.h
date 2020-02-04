@@ -23,6 +23,7 @@ namespace geometry {
 		Points BSplineCurve();
 		void arcLengthParameterization();
 		float bisectionRefinementLUT(float ul, float uh, float ds, float ds_cur, glm::vec3 p_cur);
+		float getL() const;
 		
 		// C(u)
 		glm::vec3 operator()(float t) const;
