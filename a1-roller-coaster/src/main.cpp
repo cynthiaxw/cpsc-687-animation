@@ -41,7 +41,7 @@ int main(void) {
 
 	// ... or from file
 	 //auto curve = geometry::loadCurveFromFile("curve.txt");
-	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/myCurve1.obj");
+	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/myCurve_2.obj");
 	//REMOVE
 	auto polyline2 = PolyLine<givr::PrimitiveType::LINE_LOOP>();
 	for (auto const p : curve.points()) {
@@ -125,7 +125,6 @@ int main(void) {
 			cur_speed = CONST_V;
 		}
 
-		cur_speed = CONST_V;
 		cur_s += cur_speed * DELTA_T;
 		if (cur_s >= L)
 			cur_s = 0.f;
