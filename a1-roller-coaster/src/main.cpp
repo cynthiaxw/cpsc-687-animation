@@ -74,7 +74,21 @@ int main(void) {
 	auto spheres = givr::createInstancedRenderable(sphere, // geometry
 		phong); // style
 
-	float t_bead = 0.f;
+	// Some Constants
+	const float g = 9.8f;
+	const float DELTA_T = 0.03f;
+	const float SCALER = 5;
+	const float CONST_V = 2.f;
+	const float L = curve.totalLength();
+	const float BRAKE_S = L - 3;
+	const float BRAKE_V = -0.5f;
+	const float H_S = curve.getMAX_H_S();
+	const float H = curve.getH();
+
+	float cur_s = 5;	// the current position
+	float cur_speed = 0.f;	// the current speed;
+	givr::vec3f cur_pos = curve.B(cur_s);
+	
 
 	window.run([&](float frameTime) {
 		view.projection.updateAspectRatio(window.width(), window.height());
@@ -86,17 +100,37 @@ int main(void) {
 		// givr::mat4f matrix = scale(givr::mat4f{1.f}, givr::vec3f{10.f});
 		// draw(renderableLine, view, matrix);
 
-		// auto matrix_bead = translate(givr::mat4f{ 1.f }, curve(t_bead));
-		auto matrix_bead = translate(givr::mat4f{ 1.f }, curve.B(t_bead));
+		 //auto matrix_bead = translate(givr::mat4f{ 1.f }, curve(t_bead));
+		auto matrix_bead = translate(givr::mat4f{ 1.f }, cur_pos);
 		matrix_bead = scale(matrix_bead, givr::vec3f{ 0.1f });
 
 		addInstance(spheres, matrix_bead);
 
 		draw(spheres, view);
 
-		t_bead += 0.01f;
-		if (t_bead >= 1.f)
-			t_bead = 0.f;
+		// TODO:
+		// Three phases: [0,s_high] (speed = const_v) --> (s_high, s_brake) free fall --> [s_brake, 0] speed x~0 
+
+		// we know the current position cur_pos
+		// cur_pos.y --> cur_speed --> cur_accel --> frame
+		// cur_speed*DELTA_T --> delta_s --> next_pos
+		// cur_pos = next_pos
+
+		
+		if (cur_s > H_S&& cur_s < BRAKE_S) {
+			// Update the status
+			cur_speed = sqrt(2 * g * (H - cur_pos.y));
+		}
+		else {
+			cur_speed = CONST_V;
+		}
+
+		cur_speed = CONST_V;
+		cur_s += cur_speed * DELTA_T;
+		if (cur_s >= L)
+			cur_s = 0.f;
+
+		cur_pos = curve.B(cur_s);
 	});
 
 	exit(EXIT_SUCCESS);

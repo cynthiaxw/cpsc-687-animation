@@ -21,8 +21,13 @@ namespace geometry {
 		glm::vec3 B(float s);	// arc-len parameterization
 		int getDelta(float u) const;
 		Points BSplineCurve();
+		Points setUp();
 		void arcLengthParameterization();
 		float bisectionRefinementLUT(float ul, float uh, float ds, float ds_cur, glm::vec3 p_cur);
+		float totalLength();
+		float getHighestS();
+		float getMAX_H_S();
+		float getH();
 		
 		// C(u)
 		glm::vec3 operator()(float t) const;
@@ -37,6 +42,8 @@ namespace geometry {
 		std::vector<float> UP;
 		std::vector<float> LUT;
 		float L;
+		float H;
+		float MAX_H_S;
 	};
 
 } // namespace geometry
