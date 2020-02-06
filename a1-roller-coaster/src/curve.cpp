@@ -70,7 +70,7 @@ namespace geometry {
 		int m = m_points.size() - 1;
 		// Map the parameter to the standard parameterization 
 		float step = 1.f / (m - 5);
-		u += (1 - 2 * u) * step * (B_SPLINE_ORDER-1);
+		u += (1 - 2 * u) * step * (B_SPLINE_ORDER);
 		int d = getDelta(u);
 		std::vector<vec3> C;
 		for (int i = 0; i < B_SPLINE_ORDER; i++) {
