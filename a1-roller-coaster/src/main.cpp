@@ -40,15 +40,7 @@ int main(void) {
 	//geometry::Curve curve = geometry::cubicSubdivideCurve(points, 2);
 
 	// ... or from file
-	 //auto curve = geometry::loadCurveFromFile("curve.txt");
-	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/myCurve_2.obj");
-	//REMOVE
-	auto polyline2 = PolyLine<givr::PrimitiveType::LINE_LOOP>();
-	for (auto const p : curve.points()) {
-		polyline2.push_back(Point(p));
-	}
-	auto lineStyle2 = GL_Line(Colour(1.0, 0.0, 0.0));
-	auto renderableLine2 = givr::createRenderable(polyline2, lineStyle2);
+	auto curve = geometry::loadCurveFrom_OBJ_File("../curves/myCurve.obj");
 
 	//curve = geometry::cubicSubdivideCurve(curve.points(), 2);
 	auto b_spline_points = curve.BSplineCurve();
@@ -67,7 +59,8 @@ int main(void) {
 
 	// BEAD
 	// geometry
-	auto sphere = Sphere();
+	auto sphere = givr::geometry::Mesh(Filename("../trains/train_head.obj"));
+	// auto sphere = Sphere();
 	// style
 	auto phong = Phong(Colour(1.f, 1.f, 0.f), LightPosition(10.f, 10.f, 10.f));
 	// create renderable
@@ -75,48 +68,58 @@ int main(void) {
 		phong); // style
 
 	// Some Constants
-	const float g = 9.8f;
-	const float DELTA_T = 0.03f;
-	const float SCALER = 5;
+	const float g = 9.81f;
+	const float DELTA_T = 0.02f;
 	const float CONST_V = 2.f;
 	const float L = curve.totalLength();
-	const float BRAKE_S = L - 3;
-	const float BRAKE_V = -0.5f;
+	const float BRAKE_S = L - 5;
 	const float H_S = curve.getMAX_H_S();
 	const float H = curve.getH();
+	const float DELTA_S = 0.1f;
 
-	float cur_s = 5;	// the current position
+	float cur_s = 0;	// the current position
 	float cur_speed = 0.f;	// the current speed;
 	givr::vec3f cur_pos = curve.B(cur_s);
+
+	// Reference Frame
+	vec3 N = vec3(0,1,0);	//y
+	vec3 T = vec3(1,0,0);	//x
+	vec3 B = vec3(0,0,1);	//TxN
 	
 
 	window.run([&](float frameTime) {
 		view.projection.updateAspectRatio(window.width(), window.height());
-		// default
 		draw(renderableLine, view);
-		//draw(renderableLine2, view);
 
 		// or apply model matrix
 		// givr::mat4f matrix = scale(givr::mat4f{1.f}, givr::vec3f{10.f});
 		// draw(renderableLine, view, matrix);
 
-		 //auto matrix_bead = translate(givr::mat4f{ 1.f }, curve(t_bead));
+		// Update T, N, B
+		N = cur_speed * cur_speed /(DELTA_S*DELTA_S) * (curve.B(cur_s+DELTA_S) - 2.f*curve.B(cur_s) + curve.B(cur_s-DELTA_S)); 
+		N = N - g*vec3(0,-1,0); 
+		N = normalize(N);
+		T = 1.f/DELTA_S*(curve.B(cur_s+DELTA_S) - curve.B(cur_s));
+		T = normalize(T);
+		B = normalize(cross(T, N));
+		N = normalize(cross(B, T));
+		
 		auto matrix_bead = translate(givr::mat4f{ 1.f }, cur_pos);
-		matrix_bead = scale(matrix_bead, givr::vec3f{ 0.1f });
+		matrix_bead = mat4(T[0], T[1], T[2], 0.f,
+						N[0], N[1], N[2], 0.f,
+						B[0], B[1], B[2], 0.f,
+						cur_pos[0], cur_pos[1], cur_pos[2], 1.f);
+
+		matrix_bead = scale(matrix_bead, givr::vec3f{ 1.f });
 
 		addInstance(spheres, matrix_bead);
 
 		draw(spheres, view);
 
-		// TODO:
 		// Three phases: [0,s_high] (speed = const_v) --> (s_high, s_brake) free fall --> [s_brake, 0] speed x~0 
-
-		// we know the current position cur_pos
 		// cur_pos.y --> cur_speed --> cur_accel --> frame
 		// cur_speed*DELTA_T --> delta_s --> next_pos
 		// cur_pos = next_pos
-
-		
 		if (cur_s > H_S&& cur_s < BRAKE_S) {
 			// Update the status
 			cur_speed = sqrt(2 * g * (H - cur_pos.y));
@@ -130,6 +133,9 @@ int main(void) {
 			cur_s = 0.f;
 
 		cur_pos = curve.B(cur_s);
+
+		// TODO: Calculate N, T, B
+		// TODO: Import models
 	});
 
 	exit(EXIT_SUCCESS);

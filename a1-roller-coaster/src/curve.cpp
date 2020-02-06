@@ -23,14 +23,14 @@ namespace geometry {
 	Curve::Curve(Points points) {
 		int pnum = points.size()-1;
 		// push the last 4 points
-		for (int i = B_SPLINE_ORDER; i >= 0; i--) {
+		for (int i = B_SPLINE_ORDER; i > 0; i--) {
 			m_points.push_back(points.at(pnum - i));
 		}
 		for (int i = 0; i <= pnum; i++) {
 			m_points.push_back(points.at(i));
 		}
 		// push the first 4 points
-		for (int i = 0; i <= B_SPLINE_ORDER; i++) {
+		for (int i = 1; i <= B_SPLINE_ORDER; i++) {
 			m_points.push_back(points.at(i));
 		}
 
@@ -69,8 +69,8 @@ namespace geometry {
 		if (u > 1.f) u -= 1.f;
 		int m = m_points.size() - 1;
 		// Map the parameter to the standard parameterization 
-		float step = 1.f / (m - B_SPLINE_ORDER + 2);
-		u += (1 - 2 * u) * step * (B_SPLINE_ORDER);
+		float step = 1.f / (m - 5);
+		u += (1 - 2 * u) * step * (B_SPLINE_ORDER-1);
 		int d = getDelta(u);
 		std::vector<vec3> C;
 		for (int i = 0; i < B_SPLINE_ORDER; i++) {
@@ -127,6 +127,8 @@ namespace geometry {
 	vec3 Curve::B(float s){	//s is the distance from beginning
 		if (s > L) {
 			s -= L;
+		}else if(s < 0){
+			s += L;
 		}
 		int ind = 0;
 		ind = floor(LUT.size() * s/L);
