@@ -22,16 +22,17 @@ namespace geometry {
 
 	Curve::Curve(Points points) {
 		int pnum = points.size()-1;
-		// push the last 4 points
-		for (int i = B_SPLINE_ORDER; i > 0; i--) {
-			m_points.push_back(points.at(pnum - i));
+		float SCALER = 3.f;
+		// push the last 3 points
+		for (int i = 2; i >= 0; i--) {
+			m_points.push_back(SCALER * points.at(pnum - i));
 		}
 		for (int i = 0; i <= pnum; i++) {
-			m_points.push_back(points.at(i));
+			m_points.push_back(SCALER * points.at(i));
 		}
-		// push the first 4 points
-		for (int i = 1; i <= B_SPLINE_ORDER; i++) {
-			m_points.push_back(points.at(i));
+		// push the first 3 points
+		for (int i = 0; i < 3; i++) {
+			m_points.push_back(SCALER * points.at(i));
 		}
 
 		int m = m_points.size() - 1;
@@ -69,8 +70,8 @@ namespace geometry {
 		if (u > 1.f) u -= 1.f;
 		int m = m_points.size() - 1;
 		// Map the parameter to the standard parameterization 
-		float step = 1.f / (m - 5);
-		u += (1 - 2 * u) * step * (B_SPLINE_ORDER);
+		float step = 1.f / (m - B_SPLINE_ORDER + 2);
+		u = u + (1 - 2 * u) * step * (B_SPLINE_ORDER - 1);
 		int d = getDelta(u);
 		std::vector<vec3> C;
 		for (int i = 0; i < B_SPLINE_ORDER; i++) {
@@ -90,12 +91,12 @@ namespace geometry {
 
 	int Curve::getDelta(float u) const {	// get the index of knot
 		int m = m_points.size() - 1;
-		for (int i = 0; i < U.size()-1; i++) {
+		//for (int i = 0; i < U.size()-1; i++) {
+		//	if (u >= U[i] && u < U[i + 1])return i;
+		//}
+		for (int i = B_SPLINE_ORDER - 1; i < m + B_SPLINE_ORDER - 1; i++) {
 			if (u >= U[i] && u < U[i + 1])return i;
 		}
-		/*for (int i = B_SPLINE_ORDER - 1; i < m + B_SPLINE_ORDER - 1; i++) {
-			if (u >= U[i] && u < U[i + 1])return i;
-		}*/
 		return m + B_SPLINE_ORDER - 2;
 	}
 
