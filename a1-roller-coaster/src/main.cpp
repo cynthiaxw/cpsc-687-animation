@@ -9,12 +9,14 @@
 
 #include "curve.h"
 #include "curvefileio.h"
+#include <iostream>
 
 
 using namespace glm;
 using namespace givr::camera;
 using namespace givr::geometry;
 using namespace givr::style;
+using namespace std;
 
 int main(void) {
 	io::GLFWContext windows;
@@ -44,15 +46,15 @@ int main(void) {
 	// Some Constants
 	const float g = 9.81f;
 	const float DELTA_T = 0.02f;
-	const float CONST_V = 2.f;
+	const float CONST_V = 2.5f;
 	const float L = curve.totalLength();
-	const float BRAKE_LEN = 5.f;
+	const float BRAKE_LEN = 20.f;
 	const float BRAKE_S = L - BRAKE_LEN;
 	const float H_S = curve.getMAX_H_S();
 	const float H = curve.getH();
-	const float DELTA_S = 0.1f;
-	const float BAR_LEN = 1.5f;
-	const float BAR_INTERVAL = L / 150;
+	const float DELTA_S = 0.15f;
+	const float BAR_LEN = 0.5f;
+	const float BAR_INTERVAL = L / 400;
 
 	float cur_s = 0;	// the current position
 	float cur_speed = 0.f;	// the current speed;
@@ -84,14 +86,22 @@ int main(void) {
 		if (cur_s > H_S + 0.01&& cur_s < BRAKE_S) {
 			// Update the status
 			cur_speed = sqrt(2 * g * (H - cur_pos.y));
+			cur_s += cur_speed * DELTA_T;
 		}
-		else if (cur_s >= BRAKE_S && cur_s < 0) {
-			cur_speed -= deceleration* DELTA_T;
+		else if (cur_s >= BRAKE_S && cur_s < L + 5) {
+			if (cur_speed < CONST_V){
+				cur_speed = CONST_V;
+				cur_s += cur_speed * DELTA_T;
+			}else{
+				cur_s += cur_speed * DELTA_T - 0.5f * deceleration * DELTA_T*DELTA_T;
+				cur_speed -= deceleration* DELTA_T;
+			}
+			
 		}
 		else {
 			cur_speed = CONST_V;
+			cur_s += cur_speed * DELTA_T;
 		}
-		cur_s += cur_speed * DELTA_T;
 
 		accum_s += distance(cur_pos, curve.B(cur_s));
 		if (accum_s > BAR_INTERVAL) {
@@ -177,14 +187,22 @@ int main(void) {
 		if (cur_s > H_S + 0.01&& cur_s < BRAKE_S) {
 			// Update the status
 			cur_speed = sqrt(2 * g * (H - cur_pos.y));
+			cur_s += cur_speed * DELTA_T;
 		}
-		else if (cur_s >= BRAKE_S && cur_s < 0) {
-			cur_speed -= deceleration*DELTA_T;
+		else if (cur_s >= BRAKE_S && cur_s < L + 5) {
+			if (cur_speed < CONST_V){
+				cur_speed = CONST_V;
+				cur_s += cur_speed * DELTA_T;
+			}else{
+				cur_s += cur_speed * DELTA_T - 0.5f * deceleration * DELTA_T*DELTA_T;
+				cur_speed -= deceleration* DELTA_T;
+			}
+			
 		}
 		else {
 			cur_speed = CONST_V;
+			cur_s += cur_speed * DELTA_T;
 		}
-		cur_s += cur_speed * DELTA_T;
 		if (cur_s >= L)
 			cur_s = 0.f;
 
