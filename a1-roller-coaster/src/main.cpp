@@ -18,6 +18,36 @@ using namespace givr::geometry;
 using namespace givr::style;
 using namespace std;
 
+// Global Constants
+const float g = 9.81f;
+const float DELTA_T = 0.02f;
+const float CONST_V = 2.5f;
+const float BRAKE_LEN = 20.f;
+const float DELTA_S = 0.1f;
+const float BAR_LEN = 0.5f;
+const float CART_DIST = 1.7f;
+
+
+mat4 transformMatrix(float cur_speed, float DELTA_S, geometry::Curve curve, float cur_s, vec3 cur_pos){
+	vec3 N = cur_speed * cur_speed / (DELTA_S * DELTA_S) * (curve.B(cur_s + DELTA_S) - 2.f * curve.B(cur_s) + curve.B(cur_s - DELTA_S));
+	N = N - g * vec3(0, -1, 0);
+	N = normalize(N);
+	vec3 T = 1.f / DELTA_S * (curve.B(cur_s + DELTA_S) - curve.B(cur_s));
+	T = normalize(T);
+	vec3 B = normalize(cross(T, N));
+	N = normalize(cross(B, T));
+
+	auto m = translate(givr::mat4f{1.f}, cur_pos);
+	m = mat4(T[0], T[1], T[2], 0.f,
+					   N[0], N[1], N[2], 0.f,
+					   B[0], B[1], B[2], 0.f,
+					   cur_pos[0], cur_pos[1], cur_pos[2], 1.f);
+
+	m = scale(m, givr::vec3f{1.f});
+
+	return m;
+}
+
 int main(void) {
 	io::GLFWContext windows;
 	auto window =
@@ -35,46 +65,53 @@ int main(void) {
 
 	// BEAD
 	// geometry
-	auto sphere = givr::geometry::Mesh(Filename("../trains/train_head.obj"));
+	auto train_head = givr::geometry::Mesh(Filename("../trains/train_head.obj"));
+	auto cart = givr::geometry::Mesh(Filename("../trains/train_tail.obj"));
 	// auto sphere = Sphere();
 	// style
 	auto phong = Phong(Colour(1.f, 1.f, 0.f), LightPosition(10.f, 10.f, 10.f));
 	// create renderable
-	auto spheres = givr::createInstancedRenderable(sphere, // geometry
+	auto renderable_train_head = givr::createInstancedRenderable(train_head, // geometry
 		phong); // style
 
-	// Some Constants
-	const float g = 9.81f;
-	const float DELTA_T = 0.02f;
-	const float CONST_V = 2.5f;
-	const float L = curve.totalLength();
-	const float BRAKE_LEN = 20.f;
-	const float BRAKE_S = L - BRAKE_LEN;
+	auto renderable_cart1 = givr::createInstancedRenderable(cart,
+		phong);
+
+
+
+	// -------------- Constants and variables --------------//
 	const float H_S = curve.getMAX_H_S();
 	const float H = curve.getH();
-	const float DELTA_S = 0.15f;
-	const float BAR_LEN = 0.5f;
+	const float L = curve.totalLength();
+	const float BRAKE_S = L - BRAKE_LEN;
 	const float BAR_INTERVAL = L / 400;
-
-	float cur_s = 0;	// the current position
-	float cur_speed = 0.f;	// the current speed;
-	givr::vec3f cur_pos = curve.B(cur_s);
-
-	// calculate the deceleration
-	vec3 brake_pos = curve.B(BRAKE_S);
-	float brake_speed = sqrt(2 * g * (H - brake_pos.y));
-	float deceleration = (brake_speed*brake_speed - CONST_V*CONST_V) / 2.f / BRAKE_LEN;
-
+	
 	// Reference Frame
 	vec3 N = vec3(0,1,0);	//y
 	vec3 T = vec3(1,0,0);	//x
 	vec3 B = vec3(0,0,1);	//TxN
 
+	// Reference Frame for cart1
+	vec3 N1 = vec3(0,1,0);	//y
+	vec3 T1 = vec3(1,0,0);	//x
+	vec3 B1 = vec3(0,0,1);	//TxN
+
+	float cur_s = 0;	// the current position
+	float cur_speed = 0.f;	// the current speed;
+	givr::vec3f cur_pos = curve.B(cur_s);
+
+	// -------------- Constants and variables --------------//
+
+	// calculate the deceleration
+	vec3 brake_pos = curve.B(BRAKE_S);
+	float brake_speed = sqrt(2 * g * (H - brake_pos.y));
+	float deceleration = (brake_speed - CONST_V) / BRAKE_LEN;
+
 	geometry::Points bars;
 	geometry::Points track1;
 	geometry::Points track2;
 	float accum_s = 0.f;
-	while (cur_s < L) {
+	while (cur_s <= L) {
 		N = cur_speed * cur_speed / (DELTA_S*DELTA_S) * (curve.B(cur_s + DELTA_S) - 2.f*curve.B(cur_s) + curve.B(cur_s - DELTA_S));
 		N = N - g * vec3(0, -1, 0);
 		N = normalize(N);
@@ -86,24 +123,21 @@ int main(void) {
 		if (cur_s > H_S + 0.01&& cur_s < BRAKE_S) {
 			// Update the status
 			cur_speed = sqrt(2 * g * (H - cur_pos.y));
-			cur_s += cur_speed * DELTA_T;
 		}
-		else if (cur_s >= BRAKE_S && cur_s < L + 5) {
+		else if (cur_s >= BRAKE_S && cur_s < L) {
 			if (cur_speed < CONST_V){
 				cur_speed = CONST_V;
-				cur_s += cur_speed * DELTA_T;
 			}else{
-				cur_s += cur_speed * DELTA_T - 0.5f * deceleration * DELTA_T*DELTA_T;
-				cur_speed -= deceleration* DELTA_T;
+				cur_speed -= cur_speed * DELTA_T * deceleration;
 			}
-			
 		}
 		else {
 			cur_speed = CONST_V;
-			cur_s += cur_speed * DELTA_T;
 		}
 
-		accum_s += distance(cur_pos, curve.B(cur_s));
+		cur_s += cur_speed * DELTA_T;
+
+		accum_s += cur_speed * DELTA_T;//distance(cur_pos, curve.B(cur_s));
 		if (accum_s > BAR_INTERVAL) {
 			accum_s = 0.f;
 			bars.push_back(cur_pos + BAR_LEN * B);
@@ -163,47 +197,41 @@ int main(void) {
 		// draw(renderableLine, view, matrix);
 
 		// Update T, N, B
-		N = cur_speed * cur_speed /(DELTA_S*DELTA_S) * (curve.B(cur_s+DELTA_S) - 2.f*curve.B(cur_s) + curve.B(cur_s-DELTA_S)); 
-		N = N - g*vec3(0,-1,0); 
-		N = normalize(N);
-		T = 1.f/DELTA_S*(curve.B(cur_s+DELTA_S) - curve.B(cur_s));
-		T = normalize(T);
-		B = normalize(cross(T, N));
-		N = normalize(cross(B, T));
-		
-		auto matrix_bead = translate(givr::mat4f{ 1.f }, cur_pos);
-		matrix_bead = mat4(T[0], T[1], T[2], 0.f,
-						N[0], N[1], N[2], 0.f,
-						B[0], B[1], B[2], 0.f,
-						cur_pos[0], cur_pos[1], cur_pos[2], 1.f);
+		auto matrix_head = transformMatrix(cur_speed, DELTA_S, curve, cur_s, cur_pos);
+		addInstance(renderable_train_head, matrix_head);
+		draw(renderable_train_head, view);
 
-		matrix_bead = scale(matrix_bead, givr::vec3f{ 1.f });
+		auto matrix_cart1 = transformMatrix(cur_speed, DELTA_S, curve, cur_s - CART_DIST, curve.B(cur_s - CART_DIST));
+		addInstance(renderable_cart1, matrix_cart1);
+		draw(renderable_cart1, view);
 
-		addInstance(spheres, matrix_bead);
+		matrix_cart1 = transformMatrix(cur_speed, DELTA_S, curve, cur_s - CART_DIST, curve.B(cur_s - 2*CART_DIST));
+		addInstance(renderable_cart1, matrix_cart1);
+		draw(renderable_cart1, view);
 
-		draw(spheres, view);
+		matrix_cart1 = transformMatrix(cur_speed, DELTA_S, curve, cur_s - CART_DIST, curve.B(cur_s - 3*CART_DIST));
+		addInstance(renderable_cart1, matrix_cart1);
+		draw(renderable_cart1, view);
 
 		// Update speed and pos
 		if (cur_s > H_S + 0.01&& cur_s < BRAKE_S) {
 			// Update the status
 			cur_speed = sqrt(2 * g * (H - cur_pos.y));
-			cur_s += cur_speed * DELTA_T;
 		}
-		else if (cur_s >= BRAKE_S && cur_s < L + 5) {
+		else if (cur_s >= BRAKE_S && cur_s < L) {
 			if (cur_speed < CONST_V){
 				cur_speed = CONST_V;
-				cur_s += cur_speed * DELTA_T;
 			}else{
-				cur_s += cur_speed * DELTA_T - 0.5f * deceleration * DELTA_T*DELTA_T;
-				cur_speed -= deceleration* DELTA_T;
+				cur_speed -= cur_speed * DELTA_T * deceleration;
 			}
-			
 		}
 		else {
 			cur_speed = CONST_V;
-			cur_s += cur_speed * DELTA_T;
 		}
-		if (cur_s >= L)
+
+		cur_s += cur_speed * DELTA_T;
+
+		if (cur_s > L)
 			cur_s = 0.f;
 
 		cur_pos = curve.B(cur_s);

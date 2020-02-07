@@ -35,12 +35,13 @@ namespace geometry {
 		size_t pointCount() const;
 		glm::vec3 const *data() const;
 		Points const &points() const;
+		std::vector<float> LUT;
+		std::vector<glm::vec3> LUT1;
 
 	private:
 		Points m_points;
 		std::vector<float> U;
 		std::vector<float> UP;
-		std::vector<float> LUT;
 		float L;
 		float H;
 		float MAX_H_S;

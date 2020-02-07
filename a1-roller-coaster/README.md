@@ -1,6 +1,7 @@
-Documentation
+CPSC687 - A1 Documentation
 -------------
-
+Name: Xi Wang
+UCID: 30057535
 
 
 Compilation

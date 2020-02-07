@@ -1,5 +1,6 @@
 #include "curve.h"
 #include <math.h>
+#include <iostream>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/compatibility.hpp>
@@ -9,7 +10,7 @@ namespace geometry {
 	//---------------------------Macros and global variables---------------------------//
 	// These are related to the b-spline
 	const float DELTA_T = 0.01f;
-	const float DELTA_U = 0.0001f; // unit increment of the parameter u
+	const double DELTA_U = 0.000001f; // unit increment of the parameter u
 	const int B_SPLINE_ORDER = 3; // order of the b-spline curve
 	const int N = 1000;				  // Arc length paramaterization step
 	const float DELTA_S = 0.001f;	
@@ -119,11 +120,6 @@ namespace geometry {
 		return points;
 	}
 
-	//Points Curve::setUp() {
-	//	// construct the curve
-	//	Points points = midpointSubdivide(points);
-	//}
-
 	//---------------------------Arc length---------------------------//
 	vec3 Curve::B(float s){	//s is the distance from beginning
 		if (s > L) {
@@ -132,8 +128,9 @@ namespace geometry {
 			s += L;
 		}
 		int ind = 0;
-		ind = floor(LUT.size() * s/L);
-		return (*this)(LUT[ind]);
+		ind = floor(LUT1.size() * s/L);
+		//return (*this)(LUT[ind]);
+		return LUT1[ind];
 	}
 
 	float Curve::getMAX_H_S() {
@@ -161,17 +158,23 @@ namespace geometry {
 		float ds = DELTA_S;
 		float ds_cur = 0;
 		float uh = 0;
+		vec3 p_pre = (*this)(uh);
 
 		while (uh <= 1) {
-			vec3 p_cur = (*this)(uh);
+			// vec3 p_cur = (*this)(uh);
 			uh += DELTA_U;
-			ds_cur += distance((*this)(uh), p_cur);
+			vec3 p_next = (*this)(uh);
+			ds_cur += distance(p_next, p_pre);
+			// std::cout << uh << ":" << ds_cur << std::endl;
 			if (ds_cur > ds) {
-				float ul = uh - DELTA_U;
-				uh = bisectionRefinementLUT(ul, uh, ds, ds_cur, p_cur);
-				LUT.push_back(uh);
+				//float ul = uh - DELTA_U;
+				//uh = bisectionRefinementLUT(ul, uh, ds, ds_cur, p_cur);
+				//LUT.push_back(uh);
+				LUT1.push_back(p_next);
+
 				ds_cur = 0;
 			}
+			p_pre = p_next;
 		}
 	}
 
@@ -195,46 +198,5 @@ namespace geometry {
 		return (uh+ul)/2.f;
 	}
 	//---------------------------Arc length---------------------------//
-
-
-	vec3 midpoint(vec3 const& a, vec3 const& b) { return lerp(a, b, 0.5f); }
-
-	Points midpointSubdivide(Points const& points) {
-		Points tmp;
-		tmp.reserve(points.size() * 2);
-		int numLineSegments = points.size() - 1;
-
-		for (int i = 0; i < numLineSegments; ++i) {
-			vec3 mid = lerp(points[i], points[i + 1], 0.5f);
-			tmp.push_back(points[i]);
-			tmp.push_back(mid);
-		}
-
-		vec3 mid = midpoint(points.back(), points.front());
-		tmp.push_back(points.back());
-		tmp.push_back(mid);
-
-		return tmp;
-	}
-
-	Points repeatedAveragingStep(Points points) {
-		int numLineSegments = points.size() - 1;
-		auto front = points.front(); // saved for wrap around calculation
-
-		for (int i = 0; i < numLineSegments; ++i) {
-			points[i] = midpoint(points[i], points[i + 1]);
-		}
-		points.back() = midpoint(points.back(), front);
-
-		return points;
-	}
-
-	Points repeatedAveraging(Points points, int numberOfAveragingSteps) {
-		for (int avgItr = 0; avgItr < numberOfAveragingSteps; ++avgItr) {
-			points = repeatedAveragingStep(points);
-		}
-
-		return points;
-	}
 
 } // namespace geometry
