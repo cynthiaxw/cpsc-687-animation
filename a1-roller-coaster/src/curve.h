@@ -24,6 +24,7 @@ namespace geometry {
 		Points setUp();
 		void arcLengthParameterization();
 		float bisectionRefinementLUT(float ul, float uh, float ds, float ds_cur, glm::vec3 p_cur);
+		glm::vec3 bisectionRefinementLUT1(float ul, float uh, float ds, float ds_cur, glm::vec3 p_cur);
 		float totalLength();
 		float getHighestS();
 		float getMAX_H_S();

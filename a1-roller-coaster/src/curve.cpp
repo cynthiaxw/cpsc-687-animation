@@ -167,9 +167,10 @@ namespace geometry {
 			ds_cur += distance(p_next, p_pre);
 			// std::cout << uh << ":" << ds_cur << std::endl;
 			if (ds_cur > ds) {
-				//float ul = uh - DELTA_U;
+				float ul = uh - DELTA_U;
 				//uh = bisectionRefinementLUT(ul, uh, ds, ds_cur, p_cur);
 				//LUT.push_back(uh);
+				//p_next = bisectionRefinementLUT1(ul, uh, ds, ds_cur, p_pre);
 				LUT1.push_back(p_next);
 
 				ds_cur = 0;
@@ -196,6 +197,25 @@ namespace geometry {
 			}
 		}
 		return (uh+ul)/2.f;
+	}
+
+	vec3 Curve::bisectionRefinementLUT1(float ul, float uh, float ds, float ds_cur, vec3 p_cur) {
+		float THRESH = 0.05f;
+		for (int i = 0; i < 20; i++) {	// the number of max iteration can be changed
+			float um = (uh + ul) / 2;
+			vec3 pm = (*this)(um);
+			float dsm = ds_cur + distance(pm, p_cur);
+			if (abs(dsm-ds) < THRESH || (uh - ul) / 2 < THRESH) {
+				return pm;//um;
+			}
+			if (dsm < ds) {
+				ul = um;
+			}
+			else {
+				uh = um;
+			}
+		}
+		return (*this)((uh+ul)/2.f);//(uh+ul)/2.f;
 	}
 	//---------------------------Arc length---------------------------//
 

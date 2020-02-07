@@ -186,6 +186,7 @@ int main(void) {
 	B = vec3(0, 0, 1);	//TxN
 
 	window.run([&](float frameTime) {
+
 		view.projection.updateAspectRatio(window.width(), window.height());
 		// Draw the track
 		draw(renderableBars, view);
