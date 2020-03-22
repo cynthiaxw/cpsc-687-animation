@@ -1,6 +1,9 @@
 #pragma once
 #include "io.h"
 
+int model_n = 0;
+int reset = 0;
+
 template <typename CameraT>
 class TurnTableControls {
     public:
@@ -22,6 +25,16 @@ class TurnTableControls {
                   [&](auto const &event) {
                     if (event.action == GLFW_PRESS)
                         yLock = !yLock;
+                  })
+              | io::Key(GLFW_KEY_TAB,
+                  [&](auto const& event) {
+                      if (event.action == GLFW_PRESS)
+                          model_n = (model_n + 1) % 4;
+                  })
+              | io::Key(GLFW_KEY_R,
+                  [&](auto const& event) {
+                      if (event.action == GLFW_PRESS)
+                          reset = !reset ? 1 : reset;
                   });
 
           m_window.mouseCommands() | //

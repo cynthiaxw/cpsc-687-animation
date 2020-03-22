@@ -158,7 +158,7 @@ Model initCloth() {
 	for (int i = 0; i < n_pts; i++) {	//x
 		for (int j = 0; j < n_pts; j++) {	//y
 			vec4 pos = t * vec4(leftup + vec3(i * h, -j * h, -j * h), 1.f);
-			if (j < 3 && (i % 10 < 2 || i % 10 > 7)){
+			if (j < 3 && (i % 10 < 1 || i % 10 > 8)){
 				addParticle(&model, vec3(pos[0], pos[1], pos[2]), m, 0);
 			}
 			else {
@@ -171,7 +171,13 @@ Model initCloth() {
 		for (int j = 0; j < i; j++) {
 			float d = distance(model.particles[i].pos, model.particles[j].pos);
 			if (d < 3.1 * h) {
-				addSpring(&model, j, i, d, ks, kd);
+				if (i / n_pts == j / n_pts){// && ((i / n_pts) % 10 < 2 || (i / n_pts) % 10 > 7)) {
+					addSpring(&model, j, i, d, ks*1.5, kd);
+				}
+				else {
+					addSpring(&model, j, i, d, ks, kd);
+				}
+				
 			}
 		}
 	}
@@ -216,6 +222,31 @@ void EulerIntegration(Model* model) {
 	}
 }
 
+vector<Model> models;
+Model* curmodel;
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if (action == GLFW_PRESS) {
+		if (key == GLFW_KEY_TAB) {
+			// switch model
+			model_n = (model_n + 1) % 4;
+		}
+		else if (key == GLFW_KEY_R) {
+			// reset current model
+			switch (model_n) {
+			case 0: 
+				*curmodel = initSingleSpring();
+			case 1:
+				*curmodel = initSpringChain();
+			case 2:
+				*curmodel = initJello();
+			case 3:
+				*curmodel = initCloth();
+			}
+		}
+	}
+}
+
 
 int main(void) {
 	// -------------- Setup the window and everything -------------- //
@@ -231,16 +262,14 @@ int main(void) {
 
 	// -------------- Initialize the model -------------- //
 	//Model springChain = initSpringChain();
-	//Model* curmodel = &springChain;
 	//Model singleSpring = initSingleSpring();
-	//Model* curmodel = &singleSpring;
 	//Model jelloCube = initJello();
-	//Model* curmodel = &jelloCube;
+	//Model hangCloth = initCloth();
 
-	Model hangCloth = initCloth();
-	Model* curmodel = &hangCloth;
-
-	int render_p = curmodel->showParticles;
+	models.push_back(initSingleSpring());
+	models.push_back(initSpringChain());
+	models.push_back(initJello());
+	models.push_back(initCloth());
 
 	// -------------- Create renderable particles -------------- //
 	auto phong = Phong(Colour(1.f, 1.f, 0.f), LightPosition(10.f, 10.f, 10.f));
@@ -265,6 +294,24 @@ int main(void) {
 	window.run([&](float frameTime) {
 		// Set the viewport
 		view.projection.updateAspectRatio(window.width(), window.height());
+
+		curmodel = &(models[model_n]);
+		int render_p = curmodel->showParticles;
+		if (reset) {
+			// reset current model
+			switch (model_n) {
+			case 0:
+				*curmodel = initSingleSpring(); break;
+			case 1:
+				*curmodel = initSpringChain(); break;
+			case 2:
+				*curmodel = initJello(); break;
+			case 3:
+				*curmodel = initCloth(); break;
+			}
+			reset = 0;
+		}
+
 
 		// --------------------- Update state --------------------- //
 		updateNetForce(curmodel);
