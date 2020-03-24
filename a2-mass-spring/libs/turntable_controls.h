@@ -2,6 +2,7 @@
 #include "io.h"
 
 int model_n = 0;
+int N = 5;
 int reset = 0;
 
 template <typename CameraT>
@@ -29,7 +30,7 @@ class TurnTableControls {
               | io::Key(GLFW_KEY_TAB,
                   [&](auto const& event) {
                       if (event.action == GLFW_PRESS)
-                          model_n = (model_n + 1) % 4;
+                          model_n = (model_n + 1) % N;
                   })
               | io::Key(GLFW_KEY_R,
                   [&](auto const& event) {

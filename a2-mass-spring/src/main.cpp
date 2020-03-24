@@ -18,7 +18,7 @@ using namespace std;
 
 // Global Constants
 const float g = 9.81f;
-const float Dt= 0.02f;
+const float Dt = 0.005f;
 
 typedef struct{
 	float m;	// mass
@@ -134,31 +134,29 @@ Model initJello() {
 	return model;
 }
 
-Model initCloth() {
+Model initCloth(float size = 20.f, int n_pts = 41, vec3 x = vec3(1, 0, 0.7), vec3 leftup = vec3(-10, 35.0, 0)) {
 	Model model;
-	const float size = 20.f;
-	const int n_pts = 41;				// number of particles per dimension
 	const float h = size / (n_pts - 1);	// spacing between particles
-	const float m = 0.13f;				// mass
+	const float m = 0.01f;				// mass
 	const float ksee = 0.1f;			// damping factor
-	const float ks = 40.0;
-	const float kd = 0.01;//ks * Dt;//2.f * ksee * sqrt(m * ks);
+	const float ks = 100;
+	const float kd = 0.1;//ks * Dt;//2.f * ksee * sqrt(m * ks);
 
 	// transformation matrix
-	vec3 T = normalize(vec3(1, 0, 0.7));
+	vec3 T = normalize(x);
 	vec3 N = normalize(cross(vec3(0, 0, 1), T));
 	vec3 B = normalize(cross(T, N));
 
 	auto t = mat4(T[0], T[1], T[2], 0.f,
 		N[0], N[1], N[2], 0.f,
 		B[0], B[1], B[2], 0.f,
-		0, 0, 0, 1.f);
+		leftup[0], leftup[1], leftup[2], 1.f);
 
-	vec3 leftup = vec3(-size/2.0, 35.0, 0);
+	
 	for (int i = 0; i < n_pts; i++) {	//x
 		for (int j = 0; j < n_pts; j++) {	//y
-			vec4 pos = t * vec4(leftup + vec3(i * h, -j * h, -j * h), 1.f);
-			if (j < 3 && (i % 10 < 1 || i % 10 > 8)){
+			vec4 pos = t * vec4(vec3(i * h, -j * h, -j * h), 1.f);
+			if (j < 3 && (i % 20 < 1 || i % 20 > 18)){
 				addParticle(&model, vec3(pos[0], pos[1], pos[2]), m, 0);
 			}
 			else {
@@ -170,14 +168,47 @@ Model initCloth() {
 	for (int i = 1; i < n_pts * n_pts; i++) {
 		for (int j = 0; j < i; j++) {
 			float d = distance(model.particles[i].pos, model.particles[j].pos);
-			if (d < 3.1 * h) {
-				if (i / n_pts == j / n_pts){// && ((i / n_pts) % 10 < 2 || (i / n_pts) % 10 > 7)) {
-					addSpring(&model, j, i, d, ks*1.5, kd);
-				}
-				else {
-					addSpring(&model, j, i, d, ks, kd);
-				}
-				
+			if (d < 2.1 * h) {
+				addSpring(&model, j, i, d, ks, kd);
+			}
+		}
+	}
+
+	return model;
+}
+
+// to model a square cloth falling on a table
+Model initTableCloth(float size = 20.f, int n_pts = 41, vec3 x = vec3(1, 0, 0)) {
+	Model model;
+	const float h = size / (n_pts - 1);	// spacing between particles
+	const float m = 0.01f;				// mass
+	const float ksee = 0.1f;			// damping factor
+	const float ks = 80;
+	const float kd = 0.1;//ks * Dt;//2.f * ksee * sqrt(m * ks);
+	vec3 leftup = vec3(-size/2.f, 25, size / 2.f);
+
+	// transformation matrix
+	vec3 T = normalize(x);
+	vec3 N = vec3(0,0,1);
+	vec3 B = normalize(cross(T, N));
+
+	auto t = mat4(T[0], T[1], T[2], 0.f,
+		N[0], N[1], N[2], 0.f,
+		B[0], B[1], B[2], 0.f,
+		leftup[0], leftup[1], leftup[2], 1.f);
+
+	for (int i = 0; i < n_pts; i++) {	//x
+		for (int j = 0; j < n_pts; j++) {	//y
+			vec4 pos = t * vec4(vec3(i * h, -j * h, 0), 1.f);
+			addParticle(&model, vec3(pos[0], pos[1], pos[2]), m, 1 / m);
+		}
+	}
+
+	for (int i = 1; i < n_pts * n_pts; i++) {
+		for (int j = 0; j < i; j++) {
+			float d = distance(model.particles[i].pos, model.particles[j].pos);
+			if (d < 2.1 * h) {
+				addSpring(&model, j, i, d, ks, kd);
 			}
 		}
 	}
@@ -210,42 +241,45 @@ void updateNetForce(Model* model) {
 	}
 }
 
-void EulerIntegration(Model* model) {
+void EulerIntegration(Model* model, float dt) {
 	float cr = 0.6;
 	for (int i = 0; i < model->particles.size(); i++) {
-		model->particles[i].v += model->particles[i].w * model->particles[i].F * Dt;
-		float ypos = model->particles[i].pos.y + model->particles[i].v.y * Dt;
-		if (ypos < 0) {
+		model->particles[i].v += model->particles[i].w * model->particles[i].F * dt;
+		float ypos = model->particles[i].pos.y + model->particles[i].v.y * dt;
+		if (ypos < 0 && model->particles[i].v.y<0) {
 			model->particles[i].v.y = -cr * model->particles[i].v.y;
 		}
-		model->particles[i].pos += model->particles[i].v * Dt;
+		model->particles[i].pos += model->particles[i].v * dt;
 	}
+}
+
+
+const float TABLE_R = 5.2f;
+const float TABLE_H = 10.f;
+
+int onTableTop(vec3 pos, float R, float H) {
+	if (pos.x * pos.x + pos.z * pos.z < R* R && pos.y < H && pos.y > H - 1) {
+		return 1;
+	}
+	return 0;
+}
+
+void EulerIntegrationTableCloth(Model* model, float dt) {
+	for (int i = 0; i < model->particles.size(); i++) {
+		model->particles[i].v += model->particles[i].w * model->particles[i].F * dt;
+		// check collision with the table top
+		vec3 tmppos = model->particles[i].pos + model->particles[i].v * dt;
+		if (onTableTop(tmppos, TABLE_R, TABLE_H)) {
+			model->particles[i].v = vec3(0.f);
+		}
+		model->particles[i].pos += model->particles[i].v * dt;
+	}
+	
+
 }
 
 vector<Model> models;
 Model* curmodel;
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	if (action == GLFW_PRESS) {
-		if (key == GLFW_KEY_TAB) {
-			// switch model
-			model_n = (model_n + 1) % 4;
-		}
-		else if (key == GLFW_KEY_R) {
-			// reset current model
-			switch (model_n) {
-			case 0: 
-				*curmodel = initSingleSpring();
-			case 1:
-				*curmodel = initSpringChain();
-			case 2:
-				*curmodel = initJello();
-			case 3:
-				*curmodel = initCloth();
-			}
-		}
-	}
-}
 
 
 int main(void) {
@@ -261,15 +295,11 @@ int main(void) {
 	glClearColor(1.f, 1.f, 1.f, 1.f);
 
 	// -------------- Initialize the model -------------- //
-	//Model springChain = initSpringChain();
-	//Model singleSpring = initSingleSpring();
-	//Model jelloCube = initJello();
-	//Model hangCloth = initCloth();
-
 	models.push_back(initSingleSpring());
 	models.push_back(initSpringChain());
 	models.push_back(initJello());
 	models.push_back(initCloth());
+	models.push_back(initTableCloth());
 
 	// -------------- Create renderable particles -------------- //
 	auto phong = Phong(Colour(1.f, 1.f, 0.f), LightPosition(10.f, 10.f, 10.f));
@@ -288,8 +318,13 @@ int main(void) {
 	auto renderableGournd = givr::createRenderable(ground, lineStyle1);
 	
 	auto transform = scale(translate(givr::mat4f{ 1.f }, vec3(0, -15, 0)), givr::vec3f{ 1.f });
+	auto table_t = scale(translate(givr::mat4f{ 1.f }, vec3(0, -15, 0)), givr::vec3f{ 5.f });
 
 	float t = 0.f;
+
+	// -------------- Create renderable table -------------- //
+	auto table = givr::geometry::Mesh(Filename("../table/table1.obj"));
+	auto renderableTable = givr::createInstancedRenderable(table, phong);
 
 	window.run([&](float frameTime) {
 		// Set the viewport
@@ -308,14 +343,23 @@ int main(void) {
 				*curmodel = initJello(); break;
 			case 3:
 				*curmodel = initCloth(); break;
+			case 4:
+				*curmodel = initTableCloth(); break;
 			}
 			reset = 0;
 		}
 
 
 		// --------------------- Update state --------------------- //
-		updateNetForce(curmodel);
-		EulerIntegration(curmodel);
+		for (int i = 0; i < 8; i++) {
+			updateNetForce(curmodel);
+			if (model_n == 4) {
+				EulerIntegrationTableCloth(curmodel, Dt);
+			}
+			else {
+				EulerIntegration(curmodel, Dt);
+			}
+		}
 
 		// -------------- Create renderable springs -------------- //
 		auto springs = PolyLine<givr::PrimitiveType::LINES>();
@@ -329,6 +373,11 @@ int main(void) {
 		// --------------------- Render --------------------- //
 		draw(renderableLine, view, transform);
 		draw(renderableGournd, view, transform);
+
+		if (model_n == 4) {
+			addInstance(renderableTable, table_t);
+			draw(renderableTable, view);
+		}
 
 		if (render_p) {
 			// add particle instances
