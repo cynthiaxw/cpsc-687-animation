@@ -270,7 +270,7 @@ void EulerIntegrationTableCloth(Model* model, float dt) {
 		// check collision with the table top
 		vec3 tmppos = model->particles[i].pos + model->particles[i].v * dt;
 		if (onTableTop(tmppos, TABLE_R, TABLE_H)) {
-			model->particles[i].v = vec3(0.f);
+				model->particles[i].v = vec3(0.f);
 		}
 		model->particles[i].pos += model->particles[i].v * dt;
 	}
