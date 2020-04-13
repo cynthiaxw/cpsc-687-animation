@@ -39,3 +39,4 @@ References
 GIVR API: https://lakin.ca/givr/.
 Boilerplate code: from tutorial resources (via D2L).
 Compilation instructions: https://github.com/giv-lab/givr/tree/v0.0.11. 
+Model source: https://free3d.com/3d-model/rainbow-trout-v1--202714.html
