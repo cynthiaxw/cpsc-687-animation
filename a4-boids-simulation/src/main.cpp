@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <exception>
+#include <cmath>
 
 
 using namespace glm;
@@ -18,7 +19,31 @@ using namespace std;
 // Global Constants
 const float g = 9.81f;
 const float Dt = 0.1f;
-const float BOUNDARY = 25.f;
+const float Et = 10.f;	// estimate collision time
+const float XBOUNDARY = 25.f;
+const float YBOUNDARY = 17.5f;
+const float ZBOUNDARY = 25.f;
+
+typedef struct {
+	vec3 pos;	// position
+	//vec3 f = vec3(0.f);;		// net force
+	vec3 v;		// velocity
+	vec3 fs = vec3(0.f);		// separation
+	vec3 fa = vec3(0.f);		// alignment
+	vec3 fc = vec3(0.f);		// cohesion
+	int cnt_s = 0;				// number of separation neighbors
+	int cnt_a = 0;
+	int cnt_c = 0;
+} Boid;
+
+typedef struct {
+	vector<vec3> seed;
+	vector<float> r;
+	vector<float> speed;
+	vector<vec2> obstacle_xz;		// x,z lcoation of the cylinder obstacle
+	vector<float> obstacle_r;		// radius of the cylinder obstacle
+}initState;
+
 
 // tunable parameters, can be read from text file
 int N_BOIDS = 200;
@@ -26,61 +51,93 @@ float ks = 2.f;			// separation
 float ka = 1.f;			// alignment
 float kc = 1.f;					// cohesion
 
-float k_bd = 0.9f;				// boundary collision? should be steering
-float rs = 2;
-float ra = 5;
-float rc = 10;
+float k_bd = 6.f;				// boundary collision? should be steering
+float rs = 1.5f;
+float ra = 3.5f;
+float rc = 15.f;
+const float RB = 1.f;
 
+// global variables
 float speedMag = 5.f;		// speed magnitude
 float maxForce = 0.2f;		// max force
+vec3 baitballCenter = vec3(0.f);
+initState info;				// initial state read from text file
 
-typedef struct {
-	vec3 pos;	// position
-	//vec3 f = vec3(0.f);;		// net force
-	vec3 v = vec3(0.f);;		// velocity
-	vec3 fs = vec3(0.f);;		// separation
-	vec3 fa = vec3(0.f);;		// alignment
-	vec3 fc = vec3(0.f);		// cohesion
-	int cnt_s = 0;				// number of separation neighbors
-	int cnt_a = 0;
-	int cnt_c = 0;
-} Boid;
+vec3 desiredForce(vec3 desired_v, vec3 v) {
+	vec3 f;
+	f = normalize(desired_v) * speedMag - v;
+	float len = length(f);
+	f = len > maxForce ? maxForce / len * f : f;
+	return f;
+}
 
-vec3 force_boundary(Boid b) {
-	if (b.pos.x < -BOUNDARY || b.pos.x > BOUNDARY) {
-		b.v.x = -b.v.x * k_bd;
+vec3 boundaryForce(vec3 v, vec3 pos) {
+	pos += v * Et;
+	vec3 desired_v = v;
+	int flg = 0;
+	if (pos.x < -XBOUNDARY && v.x < 0 || pos.x > XBOUNDARY && v.x > 0) {
+		desired_v.x = -desired_v.x;
+		flg = 1;
 	}
 
-	if (b.pos.y < -BOUNDARY || b.pos.y > BOUNDARY) {
-		b.v.y = -b.v.y * k_bd;
+	if (pos.y < -YBOUNDARY && v.y < 0 || pos.y > YBOUNDARY && v.y > 0) {
+		desired_v.y = -desired_v.y;
+		flg = 1;
 	}
 
-	if (b.pos.z < -BOUNDARY || b.pos.z > BOUNDARY) {
-		b.v.z = -b.v.z * k_bd;
+	if (pos.z < -ZBOUNDARY && v.z < 0 || pos.z > ZBOUNDARY && v.z > 0) {
+		desired_v.z = -desired_v.z;
+		flg = 1;
 	}
+	if (!flg) return vec3(0.f);
 
-	return b.v;
+	return k_bd*desiredForce(desired_v, v);
+}
+
+vec3 obstacleForce(vec2 v, vec2 pos) {
+	vec3 f = vec3(0.f);
+	for (int i = 0; i < info.obstacle_r.size(); i++) {
+		float R = info.obstacle_r[i] + RB;
+		vec2 xc = info.obstacle_xz[i] - pos;
+		// check if the boid will be inside the obstacle ring after Et time
+		if (length(xc) > R && distance(info.obstacle_xz[i], pos + v*.5f) > R) {
+			continue;
+		};
+		//cout << length(xc) << ", " << distance(info.obstacle_xz[i], pos + v * Et) << endl;
+		// find v_perpendicular
+		vec2 vp = normalize(v);
+		vp *= dot(vp, xc);
+		vp -= (xc);
+		float len = length(vp);
+		if (len < 0.0001) {
+			f += R * normalize(cross(vec3(xc.x, 0.f, xc.y), vec3(0.f, 1.f, 0.f)));// / pow(length(xc), 2);
+		}
+		else {
+			f += (R - length(vp)) * normalize(vec3(vp.x, 0.f, vp.y));// / pow(length(xc), 2);
+		}
+	}
+	return 2.f *f;
 }
 
 // for testing, not used
 vec3 wraparound(vec3& p) {
-	if (p.x > BOUNDARY) {
-		p.x = -BOUNDARY;
+	if (p.x > XBOUNDARY) {
+		p.x = -XBOUNDARY;
 	}
-	else if (p.x < -BOUNDARY) {
-		p.x = BOUNDARY;
+	else if (p.x < -XBOUNDARY) {
+		p.x = XBOUNDARY;
 	}
-	if (p.y > BOUNDARY) {
-		p.y = -BOUNDARY;
+	if (p.y > YBOUNDARY) {
+		p.y = -YBOUNDARY;
 	}
-	else if (p.y < -BOUNDARY) {
-		p.y = BOUNDARY;
+	else if (p.y < -YBOUNDARY) {
+		p.y = YBOUNDARY;
 	}
-	if (p.z > BOUNDARY) {
-		p.z = -BOUNDARY;
+	if (p.z > ZBOUNDARY) {
+		p.z = -ZBOUNDARY;
 	}
-	else if (p.z < -BOUNDARY) {
-		p.z = BOUNDARY;
+	else if (p.z < -ZBOUNDARY) {
+		p.z = ZBOUNDARY;
 	}
 	return p;
 }
@@ -130,6 +187,7 @@ void updateNetForce(vector<Boid>* boids) {
 }
 
 void semiImplicitIntegration(vector<Boid>* boids) {
+	vec3 ctmp = vec3(0.f);
 	for (int i = 0; i < boids->size(); i++) {
 		Boid b = boids->at(i);
 		vec3 tmpf = vec3(0.f);
@@ -139,33 +197,39 @@ void semiImplicitIntegration(vector<Boid>* boids) {
 		// separation force
 		if (b.cnt_s > 0) {
 			tmpv = b.fs / float(b.cnt_s);
-			tmpv = normalize(tmpv) * speedMag - b.v;
-			len = length(tmpv);
-			tmpf += len > maxForce ? (ks * maxForce / len * tmpv) : (ks * tmpv);
-		}		
-			
+			tmpf += ks * desiredForce(tmpv, b.v);
+		}	
+
 		// alignment force
 		if (b.cnt_a > 0) {
 			tmpv = b.fa / float(b.cnt_a);
-			tmpv = normalize(tmpv) * speedMag - b.v;
-			len = length(tmpv);
-			tmpf += len > maxForce ? ka * maxForce / len * tmpv : ka * tmpv;
+			tmpf += ka * desiredForce(tmpv, b.v);
 		}
 		
 		// cohesion force
 		if (b.cnt_c > 0) {
 			tmpv = b.fc / float(b.cnt_c);
-			tmpv = normalize(tmpv - b.pos) * speedMag - b.v;
-			len = length(tmpv);
-			tmpf += len > maxForce ? (kc * maxForce / len * tmpv) : (kc * tmpv);
+			tmpf += kc * desiredForce(tmpv-b.pos, b.v);
 		}
 		
+		// boundary force
+		tmpf += boundaryForce(b.v, b.pos);
+
+		//obstacle force
+		if (model_n == 1) {
+			tmpf += obstacleForce(vec2(b.v.x, b.v.z), vec2(b.pos.x, b.pos.z));
+		}
+		else if (model_n == 2) {	// bait ball
+			tmpf += 0.5f * desiredForce(baitballCenter - b.pos, b.v);
+		}
+
 		// update velocity
 		b.v += tmpf * Dt;
 
 		// update position
 		b.pos += b.v * Dt;
-		b.pos = wraparound(b.pos);
+		ctmp += b.pos;
+		//b.pos = wraparound(b.pos);
 
 		// clear forces
 		b.cnt_s = 0;
@@ -176,17 +240,10 @@ void semiImplicitIntegration(vector<Boid>* boids) {
 		b.fc = vec3(0.f);
 		boids->at(i) = b;
 	}
+	baitballCenter = ctmp/(float)boids->size();
 }
 
 // ============================ File IO ============================ //
-typedef struct {
-	vector<vec3> seed;
-	vector<float> r;
-	vector<float> speed;
-	vector<vec2> obstacle_xz;		// x,z lcoation of the cylinder obstacle
-	vector<float> obstacle_r;		// radius of the cylinder obstacle
-}initState;
-
 initState readInitStateFromTextfile(string const &path) {
 	using std::istreambuf_iterator;
 	using std::string;
@@ -246,12 +303,51 @@ initState readInitStateFromTextfile(string const &path) {
 	return info;
 }
 
+void drawbackground(PolyLine<givr::PrimitiveType::LINES>* ground) {
+	for (int i = 0; i < 11; i++) {
+		ground->push_back(Point(vec3(-25.f, -YBOUNDARY, -25.f + i * 5.f)));
+		ground->push_back(Point(vec3(25.f, -YBOUNDARY, -25.f + i * 5.f)));
+		ground->push_back(Point(vec3(-25.f + i * 5.f, -YBOUNDARY, -25.f)));
+		ground->push_back(Point(vec3(-25.f + i * 5.f, -YBOUNDARY, 25.f)));
+	}
+
+	ground->push_back(Point(vec3(XBOUNDARY, YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, -YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, YBOUNDARY, -ZBOUNDARY)));
+
+	ground->push_back(Point(vec3(-XBOUNDARY, YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, -YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, YBOUNDARY, -ZBOUNDARY)));
+
+	ground->push_back(Point(vec3(XBOUNDARY, -YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, -YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, -YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, -YBOUNDARY, -ZBOUNDARY)));
+
+	ground->push_back(Point(vec3(XBOUNDARY, YBOUNDARY, -ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, YBOUNDARY, -ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, YBOUNDARY, -ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, -YBOUNDARY, -ZBOUNDARY)));
+
+	ground->push_back(Point(vec3(-XBOUNDARY, -YBOUNDARY, -ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, -YBOUNDARY, ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, -YBOUNDARY, -ZBOUNDARY)));
+	ground->push_back(Point(vec3(XBOUNDARY, -YBOUNDARY, -ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, -YBOUNDARY, -ZBOUNDARY)));
+	ground->push_back(Point(vec3(-XBOUNDARY, YBOUNDARY, -ZBOUNDARY)));
+
+
+}
 // ============================ Main ============================ //
 int main(void) {
 	// -------------- Setup the window and everything -------------- //
 	io::GLFWContext windows;
 	auto window =
-		windows.create(io::Window::dimensions{ 960, 960 }, "A2 mass-spring system");
+		windows.create(io::Window::dimensions{ 1280, 960 }, "A2 mass-spring system");
 	window.enableVsync(true);
 
 	auto view = View(TurnTable(), Perspective());
@@ -260,7 +356,7 @@ int main(void) {
 	glClearColor(.5f, .5f, .5f, .5f);
 
 	// -------------- Read initial state from text file -------------- //
-	initState info = readInitStateFromTextfile("../initState.txt");
+	info = readInitStateFromTextfile("../initState.txt");
 
 	// -------------- Initialize the model -------------- //
 	vector<Boid> boids;
@@ -273,12 +369,7 @@ int main(void) {
 
 	// -------------- Create renderable background -------------- //
 	auto ground = PolyLine<givr::PrimitiveType::LINES>();
-	for (int i = 0; i < 11; i++) {
-		ground.push_back(Point(vec3(-25.f, 0.f, -25.f + i * 5.f)));
-		ground.push_back(Point(vec3(25.f, 0.f, -25.f + i * 5.f)));
-		ground.push_back(Point(vec3(-25.f + i * 5.f, 0.f, -25.f)));
-		ground.push_back(Point(vec3(-25.f + i * 5.f, 0.f, 25.f)));
-	}
+	drawbackground(& ground);
 
 	auto lineStyle1 = GL_Line(Colour(0.f, 0.f, 0.f));
 	auto renderableGournd = givr::createRenderable(ground, lineStyle1);
@@ -297,14 +388,16 @@ int main(void) {
 
 		// --------------------- Draw background --------------------- //
 		draw(renderableGournd, view, transMat);
-		for (int i = 0; i < info.obstacle_r.size(); i++) {
-			float x = info.obstacle_xz[i][0];
-			float z = info.obstacle_xz[i][1];
-			auto obst = Cylinder(Point1(x, -BOUNDARY, z), Point2(x, BOUNDARY, z), Radius(info.obstacle_r[i]));
-			auto obstrenderable = givr::createInstancedRenderable(obst, obst_phong);
-			addInstance(obstrenderable, transMat);
-			draw(obstrenderable, view);
-		}
+		if (model_n == 1) {	// obstacle behaviour
+			for (int i = 0; i < info.obstacle_r.size(); i++) {
+				float x = info.obstacle_xz[i][0];
+				float z = info.obstacle_xz[i][1];
+				auto obst = Cylinder(Point1(x, -YBOUNDARY, z), Point2(x, YBOUNDARY, z), Radius(info.obstacle_r[i]));
+				auto obstrenderable = givr::createInstancedRenderable(obst, obst_phong);
+				addInstance(obstrenderable, transMat);
+				draw(obstrenderable, view);
+			}
+		}	
 
 		// --------------------- Gradually add boids --------------------- //
 		if (boids.size() < N_BOIDS) {
