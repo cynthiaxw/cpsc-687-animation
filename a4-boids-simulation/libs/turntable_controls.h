@@ -2,7 +2,7 @@
 #include "io.h"
 
 int model_n = 0;    // behaviours 0-normal, 1-obstacle, 2-bait ball
-int N = 3;
+int N = 4;
 int reset = 0;
 
 template <typename CameraT>
